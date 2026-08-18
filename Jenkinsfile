@@ -20,5 +20,11 @@ pipeline {
                 sh './mvnw clean package -DskipTests'
             }
         }
+
+        stage('Docker Test') {
+            steps {
+                sh 'docker version'
+            }
+        }
     }
 }
