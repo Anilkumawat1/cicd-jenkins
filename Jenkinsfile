@@ -21,9 +21,9 @@ pipeline {
             }
         }
 
-        stage('Docker Test') {
+        stage('Docker Build') {
             steps {
-                sh 'docker version'
+                sh 'docker build -t cicd-jenkins:${BUILD_NUMBER} .'
             }
         }
     }
