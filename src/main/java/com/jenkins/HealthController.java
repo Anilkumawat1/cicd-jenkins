@@ -14,6 +14,6 @@ public class HealthController {
 
     @GetMapping("/api/hello")
     public Object hello(){
-        return "Hello jenkins";
+        return "Hello jenkins CI";
     }
 }
