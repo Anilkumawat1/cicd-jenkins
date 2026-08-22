@@ -28,12 +28,18 @@ pipeline {
         }
 
         stage('Docker Build') {
+
+            when {
+                buildingTag()
+            }
+
             steps {
-                echo "🐳 Building Docker image: ${IMAGE_NAME}:${BUILD_NUMBER}"
+                echo "🏷️ Release tag detected: ${TAG_NAME}"
+                echo "🐳 Building Docker image: ${IMAGE_NAME}:${TAG_NAME}"
 
                 sh '''
                     docker build \
-                        -t ${IMAGE_NAME}:${BUILD_NUMBER} \
+                        -t ${IMAGE_NAME}:${TAG_NAME} \
                         -t ${IMAGE_NAME}:latest .
                 '''
 
@@ -42,8 +48,14 @@ pipeline {
         }
 
         stage('Docker Push') {
+
+            when {
+                buildingTag()
+            }
+
             steps {
                 script {
+
                     withCredentials([
                         usernamePassword(
                             credentialsId: 'ghcr-credentials',
@@ -62,10 +74,10 @@ pipeline {
                                     --password-stdin
                             '''
 
-                            echo "📤 Pushing ${IMAGE_NAME}:${BUILD_NUMBER}..."
+                            echo "📤 Pushing ${IMAGE_NAME}:${TAG_NAME}..."
 
                             sh '''
-                                docker push ${IMAGE_NAME}:${BUILD_NUMBER}
+                                docker push ${IMAGE_NAME}:${TAG_NAME}
                             '''
 
                             echo "📤 Pushing ${IMAGE_NAME}:latest..."
@@ -81,11 +93,11 @@ pipeline {
                             echo '''
 ❌ Docker push failed!
 
-Check:
-- GHCR credentials
-- GitHub token permissions
-- Network connectivity
-- Docker image tags
+Possible causes:
+- GHCR credentials are incorrect
+- GitHub token does not have package write permission
+- Network connectivity problem
+- Docker image/tag problem
 '''
 
                             throw e
@@ -109,20 +121,44 @@ Check:
     post {
 
         success {
-            echo """
+            script {
+
+                if (env.TAG_NAME) {
+
+                    echo """
 ========================================
-🎉 PIPELINE SUCCESS
+🎉 RELEASE SUCCESS
 ========================================
 
-Application built and tested successfully.
+Release tag:
+${TAG_NAME}
 
 Docker images:
-${IMAGE_NAME}:${BUILD_NUMBER}
+${IMAGE_NAME}:${TAG_NAME}
 ${IMAGE_NAME}:latest
 
 Images pushed to GHCR successfully.
 ========================================
 """
+
+                } else {
+
+                    echo """
+========================================
+🎉 CI SUCCESS
+========================================
+
+Branch:
+${BRANCH_NAME}
+
+Application built and tested successfully.
+
+No Docker image was created because
+this is not a release tag.
+========================================
+"""
+                }
+            }
         }
 
         failure {
@@ -149,14 +185,24 @@ The pipeline was manually aborted.
         }
 
         always {
-            echo '🧹 Cleaning up local Docker images...'
+            script {
 
-            sh '''
-                docker rmi ${IMAGE_NAME}:${BUILD_NUMBER} || true
-                docker rmi ${IMAGE_NAME}:latest || true
+                if (env.TAG_NAME) {
 
-                echo '✅ Docker cleanup completed.'
-            '''
+                    echo '🧹 Cleaning up release Docker images...'
+
+                    sh '''
+                        docker rmi ${IMAGE_NAME}:${TAG_NAME} || true
+                        docker rmi ${IMAGE_NAME}:latest || true
+                    '''
+
+                    echo '✅ Docker cleanup completed.'
+
+                } else {
+
+                    echo '🧹 No Docker images were created. Cleanup not required.'
+                }
+            }
         }
     }
 }
