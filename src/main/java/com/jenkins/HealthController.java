@@ -32,4 +32,9 @@ public class HealthController {
     public Object hello3(){
         return "Hello jenkins CI3";
     }
+
+    @GetMapping("/jenkins/cI4")
+    public Object hello4(){
+        return "Hello jenkins CI4";
+    }
 }
