@@ -21,4 +21,10 @@ public class HealthController {
     public Object hello1(){
         return "Hello jenkins CI1";
     }
+
+
+    @GetMapping("/jenkins/cI2")
+    public Object hello2(){
+        return "Hello jenkins CI2";
+    }
 }
