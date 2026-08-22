@@ -41,6 +41,7 @@ fi
 if [[ -n $(git status --porcelain) ]]; then
     echo "❌ Working tree is not clean."
     echo "Commit or stash your changes first."
+    echo ""
     git status --short
     exit 1
 fi
@@ -61,7 +62,7 @@ echo "----------------------------------------"
 read -rp "New Version (e.g. 1.0.0): " NEW_VERSION
 
 ############################################
-# Validation
+# Validate version
 ############################################
 
 if [[ -z "$NEW_VERSION" ]]; then
@@ -79,6 +80,17 @@ if [[ "$NEW_VERSION" =~ ^v ]]; then
     echo "Example: 1.0.0"
     exit 1
 fi
+
+if [[ ! "$NEW_VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+    echo "❌ Invalid version format."
+    echo "Use semantic versioning:"
+    echo "Example: 1.0.0"
+    exit 1
+fi
+
+############################################
+# Check tag
+############################################
 
 if git rev-parse -q --verify "refs/tags/v$NEW_VERSION" >/dev/null; then
     echo "❌ Tag v$NEW_VERSION already exists."
@@ -112,39 +124,54 @@ if ! ./mvnw clean package -DskipTests; then
 
     exit 1
 fi
+
+echo "✅ Build successful."
+
 ############################################
 # Commit
 ############################################
 
 echo ""
-echo "Creating commit..."
+echo "Creating release commit..."
 
 git add pom.xml
 
 git commit -m "Release v$NEW_VERSION"
 
+echo "✅ Release commit created."
+
 ############################################
-# Tag
+# Create tag
 ############################################
 
 echo ""
-echo "Creating tag..."
+echo "Creating tag v$NEW_VERSION..."
 
 git tag "v$NEW_VERSION"
 
+echo "✅ Tag v$NEW_VERSION created."
+
 ############################################
-# Push
+# Push commit
 ############################################
 
 echo ""
-echo "Pushing commit..."
+echo "Pushing main branch..."
 
 git push origin main
 
+echo "✅ Main branch pushed."
+
+############################################
+# Push tag
+############################################
+
 echo ""
-echo "Pushing tag..."
+echo "Pushing release tag..."
 
 git push origin "v$NEW_VERSION"
+
+echo "✅ Tag v$NEW_VERSION pushed."
 
 ############################################
 # Done
@@ -152,5 +179,16 @@ git push origin "v$NEW_VERSION"
 
 echo ""
 echo "========================================"
-echo "✅ Release v$NEW_VERSION completed!"
+echo "🎉 RELEASE COMPLETED"
+echo "========================================"
+echo ""
+echo "Version : v$NEW_VERSION"
+echo "Branch  : main"
+echo "Tag     : v$NEW_VERSION"
+echo ""
+echo "Jenkins will:"
+echo "  1. Build main → Build + Test only"
+echo "  2. Build v$NEW_VERSION → Build + Test + Docker"
+echo "  3. Push Docker image to GHCR"
+echo ""
 echo "========================================"
